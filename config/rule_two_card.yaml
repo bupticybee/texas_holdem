@@ -1,0 +1,79 @@
+deck:
+    type: texas.card_constructor.CartesianConstructor
+    kwargs:
+        rank: ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2']
+        suit: ['h', 's', 'd', 'c']
+    
+card_sampler:
+    dependence: [deck]
+    type: texas.card_sampler.RandomCardSampler
+    kwargs:
+        
+compairer:
+    dependence: [deck]
+    type: texas.card_compair.TwoCardTexasCompairer
+    kwargs:
+    
+rule:
+    type: texas.rules_builder.TwoCardRulesBuilder
+    kwargs:
+        rule:
+            deal_card_number: 2
+            players: 2
+            raise_limit: 1
+            check_limit: 2
+            amounts:
+                check: 0
+                ante: 1
+                bet: 2
+                raise: 8
+            actions:
+                - begin
+                - bet
+                - check
+                - call
+                - raise
+                - fold
+            legal_actions_after:
+                begin: 
+                    - bet
+                    - check
+                bet:
+                    - call
+                    - raise
+                    - fold
+                raise:
+                    - call
+                    - fold
+                check:
+                    - check
+                    - bet
+                fold:
+                
+                call:
+                    - check
+                    - raise
+
+tree_builder:
+    dependence: [rule]
+    type: texas.tree_builder.TwoCardTexasTreeBuilder
+    kwargs:
+    
+card_abstraction:
+    dependence: [deck]
+    type: texas.card_abstraction.TwoCardAbstraction
+    kwargs:
+    
+strategy_profile:
+    type: texas.optimizer_cfr.StrategyProfile
+    kwargs:
+
+trainer:
+    dependence: [deck,card_sampler,compairer,rule,tree_builder,card_abstraction,strategy_profile]
+    type: texas.optimizer_cfr.CFR
+    kwargs:
+        iterations: 50000
+        print_interval: 1000
+        debug: False
+        
+        
