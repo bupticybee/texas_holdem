@@ -76,7 +76,7 @@ tree_builder:
     dependence: [rule]
     type: texas.tree_builder.FiveCardTexasTreeBuilder
     kwargs:
-                
+    
 card_abstraction:
     dependence: [deck]
     type: texas.card_abstraction.MultiCardPlainAbstraction

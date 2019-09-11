@@ -1,0 +1,17 @@
+deck:
+    type: texas.card_constructor.CartesianConstructor
+    kwargs:
+        rank: ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6']
+        suit: ['h', 's', 'd', 'c']
+
+card_sampler:
+    dependence: [deck]
+    type: texas.card_sampler.RandomCardSampler
+    kwargs:
+    
+abstraction_bucket_generator:
+    dependence: [deck]
+    type: texas.card_abstraction.AbstractionGenerator
+    kwargs:
+        dicfile: ../data/card7_dic_sorted_shortdeck.txt
+        
