@@ -4,6 +4,29 @@ from tqdm import tqdm
 import itertools
 from scipy.special import comb, perm
 import numpy as np
+import time
+import random
+
+class ProgressBar():
+    def __init__(self,worksum,info="",auto_display=True):
+        self.worksum = worksum
+        self.info = info
+        self.finishsum = 0
+        self.auto_display = auto_display
+    def startjob(self):
+        self.begin_time = time.time()
+    def complete(self,num):
+        self.gaptime = time.time() - self.begin_time
+        self.finishsum += num
+        if self.auto_display == True:
+            self.display_progress_bar()
+    def display_progress_bar(self):
+        percent = self.finishsum * 100 / self.worksum
+        eta_time = self.gaptime * 100 / (percent + 0.001) - self.gaptime
+        strprogress = "[" + "=" * int(percent // 2) + ">" + "-" * int(50 - percent // 2) + "]"
+        str_log = ("%s %.2f %% %s %s/%s \t used:%ds eta:%d s" % (self.info,percent,strprogress,self.finishsum,self.worksum,self.gaptime,eta_time))
+        sys.stdout.write('\r' + str_log)
+
 
 class CardAbstraction():
     def __init__(self,deck=None):
@@ -91,9 +114,160 @@ class AbstractionGenerator():
             ind2card[ind] = one_card 
         self.card2ind = card2ind
         self.ind2card = ind2card
+            
+            
+    def output_abstraction_river_PHS(self,output_file,abstracted_buckets):
+        publicdic = self.publicdic
+        pb = ProgressBar(worksum = len(publicdic))
+        pb.startjob()
+        pb.info = "Dividing scores"
+        scores = []
+        keynum = 0
+        for each_key in publicdic:
+            keynum += 1
+            for random_private,random_score in publicdic[each_key]:
+                scores.append(random_score)
+            if keynum % 1000 == 0:
+                pb.complete(1000)
+                
+        scores = sorted(scores)
+        
+        k = abstracted_buckets
+        cluster_scores = []
+        for i in range(k):
+            ind = int(len(scores) * (i + 1) / k)
+            cluster_scores.append(scores[ind - 1])
+            
+        def get_bucket(digit):
+            for j in range(abstracted_buckets):
+                if digit < cluster_scores[j]:
+                    return j
+            return abstracted_buckets - 1
+                
+            
+        print()
+        pb = ProgressBar(worksum = len(publicdic))
+        pb.startjob()
+        pb.info = "Writting files"
+        linenum = 0
+        with open(output_file,'w') as whdl:
+            for one_pubilc,privates in publicdic.items():
+                for (one_private,one_score) in privates:
+                    line_towrite = "{}:{}:{}:{}\n".format(
+                        "-".join(one_private),"-".join(one_pubilc),
+                        get_bucket(one_score),one_score
+                    )
+                    whdl.write(line_towrite)
+
+                linenum += 1
+                if linenum % 100 == 0:
+                    pb.complete(100)
+                    whdl.flush()
+            
+    def output_abstraction_preflop_all(self,output_file):
+        keys = self.histdic.keys()
+        values = self.histdic.values()
+        values = set([tuple(i) for i in values])
+        
+        val2ind = {}
+        for i,one_val  in enumerate(values):
+            val2ind[tuple(list(one_val))] = i
+        
+        pb = ProgressBar(worksum = len(keys))
+        pb.startjob()
+        pb.info = "In Total {} Buckets".format(len(values))
+        with open(output_file,'w') as whdl:
+            for one_key in keys:
+                one_key = tuple(list(one_key))
+                one_val = tuple(list(self.histdic[one_key]))
+                line_towrite = "{}:{}:{}:{}\n".format(
+                    "-".join(one_key),"-",
+                    val2ind[one_val],"None"
+                )
+                whdl.write(line_towrite)
+                pb.complete(1)
+        
+        
+    def output_abstraction_PHS(self,output_file,public_card_number=3,abstracted_buckets=300):
+        # 只考虑 flop turn river 
+        assert( public_card_number in [0,3,4,5])
+        if public_card_number == 5:
+            return self.output_abstraction_river_PHS(output_file,abstracted_buckets)
+        elif public_card_number == 0:
+            return self.output_abstraction_preflop_all(output_file)
+            
+        scores = list(self.phs2dic[public_card_number].values())
+        scores = sorted(scores)
+        
+        k = abstracted_buckets
+        cluster_scores = []
+        for i in range(k):
+            ind = int(len(scores) * (i + 1) / k)
+            cluster_scores.append(scores[ind - 1])
+            
+        def get_bucket(digit):
+            for j in range(abstracted_buckets):
+                if digit < cluster_scores[j]:
+                    return j
+            return abstracted_buckets - 1
+                
+            
+        pb = ProgressBar(worksum = len(scores))
+        pb.startjob()
+        linenum = 0
+        with open(output_file,'w') as whdl:
+            kvdic = self.phs2dic[public_card_number]
+            for (one_private,one_pubilc),one_score in kvdic.items():
+                line_towrite = "{}:{}:{}:{}\n".format(
+                    "-".join(one_private),"-".join(one_pubilc),
+                    get_bucket(one_score),one_score
+                )
+                whdl.write(line_towrite)
+                
+                linenum += 1
+                if linenum % 1000 == 0:
+                    pb.complete(1000)
+                    whdl.flush()
+            
+    def generate_PHS1(self,public_card_numbers = [3,4]):
+        self.generate_PHS(public_card_numbers = public_card_numbers,phs_version=1)
+            
+    def generate_PHS2(self,public_card_numbers = [3,4]):
+        self.generate_PHS(public_card_numbers = public_card_numbers,phs_version=2)
+        
+    def generate_PHS(self,public_card_numbers = [3,4],phs_version=1):
+        dic_lens = len(self.publicdic)
+        keys = list(self.publicdic.keys())
+         
+        phs2dic = {}
+        self.phs2dic = phs2dic
+        for public_card_number in public_card_numbers:
+            print("processing histdic for {} public cards".format(public_card_number))
+            one_dic = {}
+            phs2dic[public_card_number] = one_dic
+            keynumber = {}
+            pb = ProgressBar(worksum = dic_lens)
+            pb.startjob()
+            for i in range(dic_lens):
+                one_public = keys[i]
+                val = self.publicdic[one_public]
+                for  (private_hand,percent) in val:
+                    # TODO finish this
+                    for part_public in itertools.combinations(one_public,public_card_number):
+                        key = (tuple(sorted(private_hand)),tuple(sorted(part_public)))
+                        one_dic.setdefault(key,0)
+                        keynumber.setdefault(key,0)
+                        keynumber[key] += 1
+                        
+                        number = keynumber[key]
+                        one_dic[key] = one_dic[key] * (number - 1) / number + percent ** phs_version * 1 / number
+                if i % 10 == 0:
+                    pb.complete(10)
+                    
+        self.phs2dic = phs2dic
 
     def generate_histrogram(self,public_card_number,bins=20):
-        # 公共牌其实只有 0，3，4，5 这几种可能（在德州扑克中）,所以
+        # 公共牌其实只有 0，3，4 这几种可能（在德州扑克中）,所以
         # TODO 实现 公共牌有 3,4的情况
         dis = 1.0 / bins
         assert(public_card_number in [0])
