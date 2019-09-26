@@ -79,6 +79,14 @@ tree_builder:
     
 card_abstraction:
     dependence: [deck]
-    type: texas.card_abstraction.MultiCardPlainAbstraction
+    type: texas.card_abstraction.MemoryAbstraction
     kwargs:
+        preflop_file: ../data/abstractions/PHS1_PREFLOP.txt
+        preflop_lines: 630
+        flop_file: ../data/abstractions/PHS1_FLOP_300buckets.txt
+        flop_lines: 3769920
+        turn_file: ../data/abstractions/PHS1_TURN_300buckets.txt
+        turn_lines: 29216880
+        river_file: ../data/abstractions/PHS1_RIVER_300buckets.txt
+        river_lines: 175301280
     

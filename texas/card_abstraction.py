@@ -78,6 +78,72 @@ class TwoCardAbstraction(CardAbstraction):
         hand += rank2 if hand==rank1 else rank1
         hand += 's' if suit1==suit2 else 'o'
         return hand
+    
+# store the entire abstraction strategy in it's memory
+class MemoryAbstraction(CardAbstraction):
+    def __init__(self,deck=None,
+                 preflop_file=None,
+                 preflop_lines=None,
+                 flop_file=None,
+                 flop_lines=None,
+                 turn_file=None,
+                 turn_lines=None,
+                 river_file=None,
+                 river_lines=None):
+        super().__init__(deck)
+        
+        self.preflop_dic,self.preflop_buckets = self.load_abstraction_file(preflop_file,preflop_lines)
+        self.flop_dic,self.flop_buckets = self.load_abstraction_file(flop_file,flop_lines)
+        self.turn_dic,self.turn_buckets = self.load_abstraction_file(turn_file,turn_lines)
+        self.river_dic,self.river_buckets = self.load_abstraction_file(river_file,river_lines)
+        
+        
+    
+    def load_abstraction_file(self,abstraction_file,lines):
+        # TODO finish this shit
+        print()
+        with open(abstraction_file) as fhdl:
+            cards2rank = {}
+            pb = ProgressBar(worksum = lines)
+            pb.startjob()
+            pb.info = "Loading abstraction file: {} ".format(abstraction_file.split("/")[-1])
+            ind = 0
+            skip = max(int(lines / 1000),1)
+            max_bucket = 0
+            for line in fhdl:
+                private,public,bucket,score = line.strip().split(":")
+                bucket = int(bucket)
+                cards2rank["{}:{}".format(private,public)] = bucket
+                if ind % skip == 0:
+                    pb.complete(skip)
+                max_bucket = max(bucket,max_bucket)
+                ind += 1
+            
+            return cards2rank,max_bucket + 1
+                
+        
+    def abstract(self,cards):
+        """
+        number of hands should be at least two
+        """
+        private,board = cards
+        len_board = len(board)
+        assert(len(private) == 2)
+        assert(len_board in [0,3,4,5])
+        private = "-".join(sorted(private))
+        board = "-".join(sorted(board)) if len_board else "-"
+        key = "{}:{}".format(private,board)
+        print(key)
+        if len_board == 0:
+            return self.preflop_dic[key]
+        elif len_board == 3:
+            return self.flop_dic[key]
+        elif len_board == 4:
+            return self.turn_dic[key]
+        elif len_board == 5:
+            return self.river_dic[key]
+        else:
+            raise
         
 class MultiCardPlainAbstraction(CardAbstraction):
     def __init__(self,deck=None):
@@ -290,6 +356,19 @@ class AbstractionGenerator():
             histdic[key] = histdic[key] / np.sum(histdic[key])
         self.histdic = histdic
         
+    def dump_publicdic(self,filename):
+        
+        pb = ProgressBar(worksum = len(self.publicdic))
+        pb.startjob()
+        linenum = 0
+        with open(filename,'w') as whdl:
+            for key in self.publicdic:
+                whdl.write("{} {}".format(key,str(self.publicdic[key])))
+                linenum += 1
+                if linenum % 100 == 0:
+                    pb.complete(100)
+                if linenum % 1000 == 0:
+                    whdl.flush()
         
     def generate_dict_allpublic(self):
         publicdic = {}
