@@ -100,7 +100,6 @@ class MemoryAbstraction(CardAbstraction):
         
     
     def load_abstraction_file(self,abstraction_file,lines):
-        # TODO finish this shit
         print()
         with open(abstraction_file) as fhdl:
             cards2rank = {}

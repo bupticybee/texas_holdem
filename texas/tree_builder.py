@@ -67,6 +67,7 @@ class TreeBuilder:
             return 
         children = []
         text = root.to_string()
+        text += "\nround: {}".format({1:"preflop",2:"flop",3:"turn",4:"river"}[root.betting_round])
         one_json = {
             "data": {
                 "text": text},

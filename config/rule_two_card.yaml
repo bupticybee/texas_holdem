@@ -70,7 +70,7 @@ strategy_profile:
 
 trainer:
     dependence: [deck,card_sampler,compairer,rule,tree_builder,card_abstraction,strategy_profile]
-    type: texas.optimizer_cfr.CFR
+    type: texas.optimizers.optimizer_cfr.CFR
     kwargs:
         iterations: 50000
         print_interval: 1000

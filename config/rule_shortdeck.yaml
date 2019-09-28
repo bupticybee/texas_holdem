@@ -89,4 +89,17 @@ card_abstraction:
         turn_lines: 29216880
         river_file: ../data/abstractions/PHS1_RIVER_300buckets.txt
         river_lines: 175301280
+        
+strategy_profile:
+    type: texas.optimizers.optimizer_public_chance_cfr.StrategyProfile
+    kwargs:
     
+trainer:
+    dependence: [deck,card_sampler,compairer,rule,tree_builder,card_abstraction,strategy_profile]
+    type: texas.optimizers.optimizer_public_chance_cfr.PublicChanceCFR
+    kwargs:
+        iterations: 50000
+        print_interval: 1000
+        debug: False
+        
+        
