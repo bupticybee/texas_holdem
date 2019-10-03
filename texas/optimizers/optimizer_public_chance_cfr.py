@@ -67,7 +67,6 @@ class PublicChanceCFR():
     
     def cfr(self,node,reach_probs):
         player = node.player
-        possible_actions = list(node.children.keys())
         strategies = {}
         if node.terminal == True:
             # 当一方弃牌（fold）的时候，node的状态会达到terminal,返回预先计算好的在这种情况下的各方payoff
@@ -89,24 +88,51 @@ class PublicChanceCFR():
                     for jc_j in self.hc_pairs:
                         winner = self.compairer.larger(hc_i,hc_j,self.publiccards)
                         if winner == True:
-                            hc_win[hc_i] += reach_probs[1 - one_player]
+                            hc_win[hc_i] += reach_probs[1 - one_player][hc_i]
                         elif winner == False:
                             pass
                         else:
-                            hc_win[hc_i] += (reach_probs[1 - one_player]) / 2
+                            hc_win[hc_i] += (reach_probs[1 - one_player])[hc_i] / 2
                 payoffs[one_player] = hc_win
             for one_player in range(self.rule.players):
-                # TODO 返回的payoff进行处理
+                # TODO 考虑tie的情况
                 for one_hc in self.hc_pairs:
-                    payoffs[one_player][one_hc] *= reach_probs[one_player][one_hc]
+                    prob_win = payoffs[one_player][one_hc]
+                    payoffs[one_player][one_hc] = reach_probs[one_player][one_hc] * (prob_win * node.payoffs[one_player][one_player] + (1 - prob_win) * node.payoffs[1 - one_player][one_player])
+            return payoffs
         else:
+            possible_actions = list(node.children.keys())
+            payoffs = {}
+            
+            # 这里需要做的事情（1）计算各个infoset的payoff（2）更新策略strategy profile
+            # strategies <hc:action:prob>
+            strategies = {}
             for each_hc in self.hc_pairs:
                 each_infoset = self.get_infoset_str(each_hc,self.publiccards[:node.betting_round - 1],node)
                 # TODO try not to use random uniform initization
+                # infoset_strategy like <key:value> -> <action,prob>
                 infoset_strategy = self.strategy_profile.get_strategy(each_infoset,possible_actions,reach_probs[player][each_hc])
-                # TODO calculate reach probs for next level reachprob, extra...
+                strategies[one_hc] = infoset_strategy
+                
+            # payoffs like <player:hc:value>
+            payoffs = {}
+            for one_player in range(self.rule.players):
+                for one_hc in self.hc_pairs:
+                    payoffs[one_player][one_hc] = 0
+                
+            for one_action in possible_actions:
+                reach_prob_next = copy.deepcopy(reach_probs)
+                for one_hc in self.hc_pairs:
+                    reach_prob_next[1 - player][one_hc] *= strategies[one_hc][one_action]
+                # child_payoffs like <player:hc:payoff>
+                child_payoffs = self.cfr(root.children[one_action],reach_prob_next)
+                # TODO 将child_payoffs 整合进payoffs,然后返回
+                for one_hc in self.hc_pairs:
+                    payoffs[1 - player][one_hc] += child_payoffs[1 - player][one_hc]
+                    payoffs[player][one_hc] += strategies[one_hc][one_action] * child_payoffs[player][one_hc]
+            
+            return payoffs
 
-        return 0
         
 class StrategyNode(object):
     """
